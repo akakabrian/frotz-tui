@@ -27,9 +27,28 @@ from textual.widgets import Footer, Header, Input, RichLog, Static
 
 from .engine import FrotzEngine, StatusLine, classify_line
 from .mapper import Mapper, canonical_direction
+from .screens import HelpScreen
 
 
 INVENTORY_COMMANDS = {"i", "inv", "inventory"}
+
+# Rough heuristic: lines that end with punctuation and start with a
+# capital letter and don't contain ">" are likely narrative prose —
+# rendered in the default color. Room headers (short title-cased lines)
+# get styled yellow so they stand out in the transcript.
+def _looks_like_room_header(line: str) -> bool:
+    s = line.strip()
+    if not s or len(s) > 50:
+        return False
+    # No trailing punctuation, Title Case.
+    if s[-1] in ".!?,;:":
+        return False
+    words = s.split()
+    if len(words) < 1 or len(words) > 6:
+        return False
+    # All words start with caps (allowing articles).
+    caps = sum(1 for w in words if w and w[0].isupper())
+    return caps >= max(1, len(words) - 1)
 
 
 @dataclass
@@ -114,8 +133,9 @@ class FrotzApp(App):
 
     BINDINGS = [
         Binding("ctrl+c", "quit", "Quit", priority=True, show=True),
-        Binding("ctrl+l", "clear_transcript", "Clear log", show=True),
+        Binding("ctrl+l", "clear_transcript", "Clear", show=True),
         Binding("ctrl+r", "refresh_all", "Refresh", show=False),
+        Binding("question_mark", "help", "Help", show=True),
     ]
 
     def __init__(self, story_path: str, dfrotz_path: str) -> None:
@@ -134,6 +154,10 @@ class FrotzApp(App):
         # Pending command — filled when user hits Enter, echoed into the
         # transcript, and used by the mapper to interpret status changes.
         self._last_command: str | None = None
+        # Command history (most-recent last). Arrow keys in the input bar
+        # walk the history like a shell.
+        self._history: list[str] = []
+        self._history_pos: int | None = None   # None = live entry; int = index
         # Timer handle (so we can cancel on shutdown).
         self._pump_timer = None
 
@@ -222,7 +246,10 @@ class FrotzApp(App):
             # inventory block for most games. We'll flush on the next
             # quiet tick if this is empty AND we already have items.
             self._inv_capture.lines.append(line)
-        self._write_transcript(line)
+        if _looks_like_room_header(line):
+            self._write_transcript(line, style="bold #ffd866")
+        else:
+            self._write_transcript(line)
 
     def _flush_inventory(self) -> None:
         assert self.inv_panel is not None
@@ -275,11 +302,15 @@ class FrotzApp(App):
         cmd = event.value.strip()
         assert self.input_bar is not None
         self.input_bar.value = ""
+        self._history_pos = None
         if not cmd:
             return
         if not self.engine.is_alive():
             self._write_transcript("[engine not running]", style="bold red")
             return
+        # Record history (dedupe consecutive duplicates).
+        if not self._history or self._history[-1] != cmd:
+            self._history.append(cmd)
         # Echo the command into the transcript so it reads like a play log.
         self._write_transcript(f"> {cmd}", style="bold #8ec9ff")
         # Tell the mapper what direction (if any) we're about to take.
@@ -294,6 +325,32 @@ class FrotzApp(App):
             self._write_transcript(f"[engine error] {e}", style="bold red")
         self._last_command = cmd
 
+    async def on_key(self, event) -> None:
+        """Up/Down in the input bar walks command history."""
+        # Only react if the input is focused and not a modal screen.
+        if self.input_bar is None or not self.input_bar.has_focus:
+            return
+        if self.screen is not self.screen_stack[0]:
+            # A modal is on top.
+            return
+        if event.key == "up" and self._history:
+            if self._history_pos is None:
+                self._history_pos = len(self._history) - 1
+            else:
+                self._history_pos = max(0, self._history_pos - 1)
+            self.input_bar.value = self._history[self._history_pos]
+            event.stop()
+        elif event.key == "down" and self._history:
+            if self._history_pos is None:
+                return
+            self._history_pos += 1
+            if self._history_pos >= len(self._history):
+                self._history_pos = None
+                self.input_bar.value = ""
+            else:
+                self.input_bar.value = self._history[self._history_pos]
+            event.stop()
+
     # ---------- actions ----------
 
     def action_clear_transcript(self) -> None:
@@ -302,6 +359,9 @@ class FrotzApp(App):
 
     def action_refresh_all(self) -> None:
         self._refresh_panels()
+
+    def action_help(self) -> None:
+        self.push_screen(HelpScreen())
 
 
 def run(*, story_path: str, dfrotz_path: str) -> None:

@@ -167,6 +167,92 @@ async def s_mapper_records_edge(app, pilot):
     assert eor.exits.get("e", "").startswith("Inside"), eor.exits
 
 
+async def s_engine_dies_gracefully(app, pilot):
+    """Killing the engine subprocess out from under the app should not
+    crash the TUI — the pump tick must handle `is_alive() == False` and
+    the next input submission should display a clear error."""
+    await _wait_for_text(app, pilot, "End Of Road", timeout=4.0)
+    # Hard-kill the subprocess.
+    assert app.engine._proc is not None
+    app.engine._proc.kill()
+    # Let the pump notice.
+    await pilot.pause(0.3)
+    assert not app.engine.is_alive()
+    # App still standing — widgets intact?
+    assert app.transcript is not None
+    assert app.map_panel is not None
+    # Submitting a command now should produce an error, not a crash.
+    assert app.input_bar is not None
+    app.input_bar.focus()
+    await pilot.press(*"look")
+    await pilot.press("enter")
+    ok = await _wait_for_text(app, pilot, "engine not running", timeout=1.0)
+    assert ok, "expected graceful 'engine not running' message"
+
+
+async def s_empty_command_ignored(app, pilot):
+    """Hitting Enter with no input shouldn't send anything to dfrotz."""
+    await _wait_for_text(app, pilot, "End Of Road", timeout=4.0)
+    assert app.input_bar is not None
+    app.input_bar.focus()
+    # Just Enter — no text.
+    await pilot.press("enter")
+    await pilot.pause(0.2)
+    # No "> " prompt with empty text should have been echoed.
+    # (If the empty-command guard failed, we'd see the echo.)
+    txt = "\n".join(
+        "".join(seg.text for seg in list(line))
+        for line in app.transcript.lines
+    )
+    # There should be no "> \n" or "> " at the end as a single line.
+    assert "> \n" not in txt, "empty command was echoed"
+
+
+async def s_mapper_handles_unknown_direction(app, pilot):
+    """Mapper.note_command with a non-direction should not add bogus edges."""
+    m = Mapper()
+    m.note_room("A")
+    m.note_command("xyzzy")   # not a direction
+    m.note_room("B")
+    # B should be placed, but there should be no edge labelled "xyzzy"
+    # on A.
+    assert "B" in m.rooms
+    assert "xyzzy" not in m.rooms["A"].exits
+
+
+async def s_help_modal_opens_and_closes(app, pilot):
+    await _wait_for_text(app, pilot, "End Of Road", timeout=4.0)
+    # Focus the app (not the input) so the ? binding fires at the App level.
+    # Input has its own keystroke handling; we trigger the action directly.
+    app.action_help()
+    await pilot.pause(0.1)
+    assert app.screen.__class__.__name__ == "HelpScreen", (
+        f"after help action, top screen is {app.screen.__class__.__name__}"
+    )
+    await pilot.press("escape")
+    await pilot.pause(0.1)
+    assert app.screen.__class__.__name__ != "HelpScreen"
+
+
+async def s_command_history_recall(app, pilot):
+    """Up arrow in the input bar should recall the last command."""
+    await _wait_for_text(app, pilot, "End Of Road", timeout=4.0)
+    assert app.input_bar is not None
+    app.input_bar.focus()
+    # Submit a command to populate history.
+    await pilot.press(*"look")
+    await pilot.press("enter")
+    await pilot.pause(0.2)
+    # Now press up-arrow.
+    await pilot.press("up")
+    await pilot.pause(0.05)
+    assert app.input_bar.value == "look", f"history recall: {app.input_bar.value!r}"
+    # Down clears back to live entry.
+    await pilot.press("down")
+    await pilot.pause(0.05)
+    assert app.input_bar.value == "", f"down should clear, got {app.input_bar.value!r}"
+
+
 async def s_clear_transcript_binding(app, pilot):
     await _wait_for_text(app, pilot, "End Of Road", timeout=4.0)
     assert app.transcript is not None
@@ -241,6 +327,11 @@ SCENARIOS: list[Scenario] = [
     Scenario("movement_updates_room",      s_movement_updates_room),
     Scenario("inventory_populates_panel",  s_inventory_populates_panel),
     Scenario("mapper_records_edge",        s_mapper_records_edge),
+    Scenario("mapper_unknown_direction",   s_mapper_handles_unknown_direction),
+    Scenario("empty_command_ignored",      s_empty_command_ignored),
+    Scenario("engine_dies_gracefully",     s_engine_dies_gracefully),
+    Scenario("help_modal",                 s_help_modal_opens_and_closes),
+    Scenario("command_history_recall",     s_command_history_recall),
     Scenario("clear_transcript_binding",   s_clear_transcript_binding),
 ]
 

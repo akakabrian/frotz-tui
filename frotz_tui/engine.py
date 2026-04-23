@@ -174,23 +174,18 @@ class FrotzEngine:
             return
         try:
             if p.poll() is None:
-                # Try graceful: send a quit-like sequence. Many IF games
-                # answer "Y" to the confirm prompt; if dfrotz has already
-                # bailed we'll fall through to terminate().
+                # Skip the graceful-quit wait: dfrotz doesn't always honour
+                # `\q` while mid-prompt, and we don't need its bookkeeping.
+                # Straight to SIGTERM, then SIGKILL.
+                p.terminate()
                 try:
-                    if p.stdin and not p.stdin.closed:
-                        p.stdin.write("\\q\n")   # dfrotz runtime escape: quit
-                        p.stdin.flush()
-                except (BrokenPipeError, ValueError):
-                    pass
-                try:
-                    p.wait(timeout=0.5)
+                    p.wait(timeout=0.2)
                 except subprocess.TimeoutExpired:
-                    p.terminate()
+                    p.kill()
                     try:
-                        p.wait(timeout=0.5)
+                        p.wait(timeout=0.2)
                     except subprocess.TimeoutExpired:
-                        p.kill()
+                        pass
         finally:
             if p.stdin:
                 try:

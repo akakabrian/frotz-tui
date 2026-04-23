@@ -156,10 +156,14 @@ class Mapper:
         cell_h = 2    # room row + connector row
 
         # Each grid cell (x, y) → abbrev string (≤3 chars) + is_current flag.
+        # Also build a cell → Room lookup so render_line can O(1) check
+        # connectors instead of scanning `self.rooms` per cell.
         placed: dict[tuple[int, int], tuple[str, bool]] = {}
+        at_cell: dict[tuple[int, int], Room] = {}
         for r in self.rooms.values():
             abbrev = _abbrev(r.name)
             placed[(r.x, r.y)] = (abbrev, r.name == self.current)
+            at_cell[(r.x, r.y)] = r
 
         # Compute which cells are visible given viewport center.
         half_w = (viewport_w // cell_w) // 2
@@ -184,7 +188,7 @@ class Mapper:
             # Row 2: n/s connectors.
             conn = ""
             for gx in range(x_min, x_max + 1):
-                room_here = _find_room_at(self.rooms, gx, gy)
+                room_here = at_cell.get((gx, gy))
                 has_s = bool(room_here and "s" in room_here.exits)
                 has_e = bool(room_here and "e" in room_here.exits)
                 # east connector between this cell and next
