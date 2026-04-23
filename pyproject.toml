@@ -1,0 +1,18 @@
+[project]
+name = "frotz-tui"
+version = "0.1.0"
+description = "Terminal-native Z-machine interpreter (Frotz + Textual)"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.80,<10",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["frotz_tui"]
+
+[tool.setuptools.package-data]
+frotz_tui = ["tui.tcss"]

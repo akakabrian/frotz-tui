@@ -1,0 +1,79 @@
+Screen {
+    layout: vertical;
+    background: #0c0d12;
+}
+
+#main {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#left {
+    layout: vertical;
+    width: 28;
+    min-width: 24;
+    height: 100%;
+    border-right: solid #3a3f52;
+}
+
+#map_panel {
+    height: 1fr;
+    padding: 0 1;
+    border-bottom: solid #3a3f52;
+    color: #8ec9ff;
+}
+
+#inventory_panel {
+    height: 16;
+    padding: 0 1;
+    color: #cfe08a;
+}
+
+#center {
+    layout: vertical;
+    width: 1fr;
+    height: 100%;
+}
+
+#status_bar {
+    height: 3;
+    padding: 0 1;
+    background: #1a2236;
+    color: #ffd866;
+    border-bottom: solid #3a3f52;
+    content-align: left middle;
+}
+
+#transcript {
+    height: 1fr;
+    padding: 0 1;
+    background: #0c0d12;
+    color: #dfe5ef;
+}
+
+#input_bar {
+    height: 3;
+    border-top: solid #3a3f52;
+    background: #151825;
+}
+
+Input {
+    background: #151825;
+    color: #f0f3ff;
+    border: none;
+    padding: 0 1;
+}
+
+Input:focus {
+    border: none;
+}
+
+Footer {
+    background: #1a2236;
+    color: #8ea3c9;
+}
+
+Header {
+    background: #1a2236;
+    color: #ffd866;
+}
