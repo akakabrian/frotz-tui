@@ -18,12 +18,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from frotz_tui.app import FrotzApp
-from frotz_tui.engine import (
-    FrotzEngine,
-    StatusLine,
-    classify_line,
-    parse_status_line,
-)
+from frotz_tui.engine import parse_status_line
 from frotz_tui.mapper import Mapper, canonical_direction
 
 

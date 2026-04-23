@@ -26,7 +26,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header, Input, RichLog, Static
 
 from .engine import FrotzEngine, StatusLine, classify_line
-from .mapper import Mapper, canonical_direction
+from .mapper import Mapper
 from .screens import HelpScreen
 
 
@@ -314,7 +314,8 @@ class FrotzApp(App):
         # Echo the command into the transcript so it reads like a play log.
         self._write_transcript(f"> {cmd}", style="bold #8ec9ff")
         # Tell the mapper what direction (if any) we're about to take.
-        self.map_panel.mapper.note_command(cmd) if self.map_panel else None
+        if self.map_panel is not None:
+            self.map_panel.mapper.note_command(cmd)
         # Kick off inventory capture.
         if cmd.lower() in INVENTORY_COMMANDS:
             self._inv_capture.active = True

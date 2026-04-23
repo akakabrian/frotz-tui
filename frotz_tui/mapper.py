@@ -209,10 +209,3 @@ def _abbrev(name: str) -> str:
     if len(words) == 1:
         return words[0][:3].upper()
     return "".join(w[0] for w in words[:3]).upper()
-
-
-def _find_room_at(rooms: dict[str, Room], x: int, y: int) -> Room | None:
-    for r in rooms.values():
-        if r.x == x and r.y == y:
-            return r
-    return None

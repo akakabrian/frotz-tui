@@ -24,12 +24,10 @@ from __future__ import annotations
 import os
 import queue
 import re
-import signal
 import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -221,8 +219,3 @@ class FrotzEngine:
 
     def is_alive(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
-
-    # ---------- helpers ----------
-
-    def classify_batch(self, lines: Iterable[str]) -> list[tuple[str, object]]:
-        return [classify_line(ln) for ln in lines]

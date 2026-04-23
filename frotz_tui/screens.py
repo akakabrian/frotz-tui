@@ -59,15 +59,15 @@ class HelpScreen(ModalScreen[None]):
     """
 
     BINDINGS = [
-        Binding("escape", "dismiss", "close", priority=True),
-        Binding("enter", "dismiss", "close", priority=True),
-        Binding("q", "dismiss", "close", priority=True),
-        Binding("question_mark", "dismiss", "close", priority=True),
+        Binding("escape", "close", "close", priority=True),
+        Binding("enter", "close", "close", priority=True),
+        Binding("q", "close", "close", priority=True),
+        Binding("question_mark", "close", "close", priority=True),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical():
             yield Static(HELP_TEXT, id="help_body", markup=True)
 
-    def action_dismiss(self) -> None:
+    def action_close(self) -> None:
         self.app.pop_screen()
